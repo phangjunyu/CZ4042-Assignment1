@@ -7,7 +7,7 @@ import numpy as np
 import pylab as plt
 
 
-# scale data
+# scale data - normalizes data to between 0 and 1
 def scale(X, X_min, X_max):
     return (X - X_min)/(X_max-X_min)
 
