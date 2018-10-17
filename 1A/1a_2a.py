@@ -16,8 +16,8 @@ NUM_CLASSES = 6
 
 learning_rate = 0.01
 epochs = 1000
-batch_size = 16 #optimal as decided in 2c
-num_neurons = [5*i for i in range(1, 6)]
+batch_sizes = [2**i for i in range(2, 7)]
+num_neurons = 10
 seed = 10
 np.random.seed(seed)
 
@@ -41,13 +41,13 @@ testY[np.arange(test_Y.shape[0]), test_Y-1] = 1 #one hot matrix
 
 
 # experiment with small datasets
-trainX = trainX[:1000]
-trainY = trainY[:1000]
+# trainX = trainX[:1000]
+# trainY = trainY[:1000]
 
 n = trainX.shape[0]
 
-testX = testX[:1000]
-testY = testY[:1000]
+# testX = testX[:1000]
+# testY = testY[:1000]
 
 
 
@@ -55,32 +55,32 @@ testY = testY[:1000]
 x = tf.placeholder(tf.float32, [None, NUM_FEATURES])
 y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
 
+# Build the graph for the deep net
+
+weights_h = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neurons], stddev=0.001)) 
+biases_h = tf.Variable(tf.zeros([num_neurons]))
+
+weights = tf.Variable(tf.truncated_normal([num_neurons, NUM_CLASSES], stddev=1.0/math.sqrt(float(NUM_FEATURES))), name='weights')
+biases  = tf.Variable(tf.zeros([NUM_CLASSES]), name='biases')
+
+h = tf.nn.relu(tf.matmul(x, weights_h) + biases_h)
+logits = tf.matmul(h, weights) + biases
+
+ridge_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_, logits=logits)
+ridge_param = tf.constant(0.000001)
+regularization = tf.nn.l2_loss(weights) + tf.nn.l2_loss(weights_h)
+loss = tf.reduce_mean(ridge_loss + ridge_param*regularization)
+
+# Create the gradient descent optimizer with the given learning rate.
+optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+train_op = optimizer.minimize(loss)
+
+correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)), tf.float32)
+accuracy = tf.reduce_mean(correct_prediction)
 
 all_train_accs = []
 all_test_accs = []
-# Build the graph for the deep net
-for num_neuron in num_neurons:
-    weights_h = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neuron], stddev=0.001)) 
-    biases_h = tf.Variable(tf.zeros([num_neuron]))
-
-    weights = tf.Variable(tf.truncated_normal([num_neuron, NUM_CLASSES], stddev=1.0/math.sqrt(float(NUM_FEATURES))), name='weights')
-    biases  = tf.Variable(tf.zeros([NUM_CLASSES]), name='biases')
-
-    h = tf.nn.relu(tf.matmul(x, weights_h) + biases_h)
-    logits = tf.matmul(h, weights) + biases
-
-    ridge_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_, logits=logits)
-    ridge_param = tf.constant(0.000001)
-    regularization = tf.nn.l2_loss(weights) + tf.nn.l2_loss(weights_h)
-    loss = tf.reduce_mean(ridge_loss + ridge_param*regularization)
-
-    # Create the gradient descent optimizer with the given learning rate.
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
-    train_op = optimizer.minimize(loss)
-
-    correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)), tf.float32)
-    accuracy = tf.reduce_mean(correct_prediction)
-
+for batch_size in batch_sizes:
     train_acc = []
     test_acc = []
     with tf.Session() as sess:
@@ -93,10 +93,12 @@ for num_neuron in num_neurons:
 
             if i % 100 == 0:
                 print('iter %d: training accuracy %g'%(i, train_acc[i]))
-        print("final test accuracy: %g" %test_acc[-1])
+        print('final test accuracy %g'%test_acc[-1])
         sess.close()
+        
     all_train_accs.append(train_acc)
     all_test_accs.append(test_acc)
+
 
 # plot learning curves
 plt.figure(1)
@@ -105,9 +107,9 @@ for train_acc, test_acc in zip(all_train_accs, all_test_accs):
     plt.plot(range(epochs), test_acc)
 plt.xlabel(str(epochs) + ' iterations')
 legend = []
-for i in num_neurons:
-    legend.append("Training with " + str(i) + " Hidden Neurons")
-    legend.append("Testing with " + str(i) + " Hidden Neurons")
+for i in batch_sizes:
+    legend.append("Training with Batch Size " + str(i))
+    legend.append("Testing with Batch Size " + str(i))
 plt.legend(legend)
 plt.ylabel('Accuracy')
 plt.show()

@@ -1,11 +1,11 @@
 #
-# Project 1, Question 1A, Part 2B
+# Project 1, Question 1A, Part 1
 #
 import math
 import tensorflow as tf
 import numpy as np
 import pylab as plt
-from time import time
+
 
 # scale data
 def scale(X, X_min, X_max):
@@ -15,8 +15,8 @@ NUM_FEATURES = 36
 NUM_CLASSES = 6
 
 learning_rate = 0.01
-epochs = 1
-batch_sizes = [2**i for i in range(2, 7)]
+epochs = 1000
+batch_size = 32
 num_neurons = 10
 seed = 10
 np.random.seed(seed)
@@ -32,8 +32,8 @@ trainY[np.arange(train_Y.shape[0]), train_Y-1] = 1 #one hot matrix
 
 
 # experiment with small datasets
-trainX = trainX[:1000]
-trainY = trainY[:1000]
+# trainX = trainX[:1000]
+# trainY = trainY[:1000]
 
 n = trainX.shape[0]
 
@@ -65,29 +65,21 @@ train_op = optimizer.minimize(loss)
 correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)), tf.float32)
 accuracy = tf.reduce_mean(correct_prediction)
 
-times=[]
-for batch_size in batch_sizes:
-    start_time = time()
-    train_acc = [] # technically not used
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-        for i in range(epochs):
-            for start in range(0, n-batch_size, batch_size):
-                train_op.run(feed_dict={x: trainX[start:start+batch_size], y_: trainY[start:start+batch_size]})
-            train_acc.append(accuracy.eval(feed_dict={x: trainX, y_: trainY}))
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    train_acc = []
+    for i in range(epochs):
+        train_op.run(feed_dict={x: trainX, y_: trainY})
+        train_acc.append(accuracy.eval(feed_dict={x: trainX, y_: trainY}))
 
-            # if i % 100 == 0:
-            #     print('iter %d: accuracy %g'%(i, train_acc[i]))
-        sess.close()
-    end_time = time()
-        
-    times.append(end_time - start_time)
+        if i % 100 == 0:
+            print('iter %d: accuracy %g'%(i, train_acc[i]))
 
 
 # plot learning curves
 plt.figure(1)
-plt.scatter(batch_sizes, times)
-plt.xlabel("Batch Size")
-plt.ylabel('Time Taken (s)')
+plt.plot(range(epochs), train_acc)
+plt.xlabel(str(epochs) + ' iterations')
+plt.ylabel('Train accuracy')
 plt.show()
 

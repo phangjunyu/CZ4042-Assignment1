@@ -1,10 +1,11 @@
 #
-# Project 1, Question 1A, Part 4B
+# Project 1, Question 1A, Part 2A
 #
 import math
 import tensorflow as tf
 import numpy as np
 import pylab as plt
+from time import time
 
 
 # scale data
@@ -15,12 +16,11 @@ NUM_FEATURES = 36
 NUM_CLASSES = 6
 
 learning_rate = 0.01
-epochs = 1000
-batch_size = 32 
-num_neuron = 20
+epochs = 1
+batch_size = 32 #optimal as decided in 2c
+num_neurons = [5*i for i in range(1, 6)]
 seed = 10
 np.random.seed(seed)
-ridge_params = [0, 10**-3, 10**-6, 10**-9, 10**-12]
 
 #read train data
 train_input = np.loadtxt('sat_train.txt',delimiter=' ')
@@ -42,23 +42,23 @@ testY[np.arange(test_Y.shape[0]), test_Y-1] = 1 #one hot matrix
 
 
 # experiment with small datasets
-trainX = trainX[:1000]
-trainY = trainY[:1000]
+# trainX = trainX[:1000]
+# trainY = trainY[:1000]
 
 n = trainX.shape[0]
 
-testX = testX[:1000]
-testY = testY[:1000]
+# testX = testX[:1000]
+# testY = testY[:1000]
+
 
 
 # Create the model
 x = tf.placeholder(tf.float32, [None, NUM_FEATURES])
 y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
-
-
-test_accs = []
-# Build the graph for the deep net
-for ridge_param in ridge_params:
+    
+times = []
+for num_neuron in num_neurons:
+    # Build the graph for the deep net
     weights_h = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neuron], stddev=0.001)) 
     biases_h = tf.Variable(tf.zeros([num_neuron]))
 
@@ -69,6 +69,7 @@ for ridge_param in ridge_params:
     logits = tf.matmul(h, weights) + biases
 
     ridge_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_, logits=logits)
+    ridge_param = tf.constant(0.000001)
     regularization = tf.nn.l2_loss(weights) + tf.nn.l2_loss(weights_h)
     loss = tf.reduce_mean(ridge_loss + ridge_param*regularization)
 
@@ -79,22 +80,23 @@ for ridge_param in ridge_params:
     correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)), tf.float32)
     accuracy = tf.reduce_mean(correct_prediction)
 
-    train_acc = []
+    
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
+        start_time = time()
         for i in range(epochs):
             for start in range(0, n-batch_size, batch_size):
                 train_op.run(feed_dict={x: trainX[start:start+batch_size], y_: trainY[start:start+batch_size]})
-            if i %100 == 0:
-                print("iter %d: training accuracy %g"%(i,accuracy.eval(feed_dict={x: trainX, y_: trainY})))
-        test_accs.append(accuracy.eval(feed_dict={x: testX, y_: testY}))
-        print('test accuracy %g'%(test_accs[-1]))
-        sess.close()
+            train_acc = accuracy.eval(feed_dict={x: trainX, y_: trainY})
+            test_acc = accuracy.eval(feed_dict={x: testX, y_: testY})
+        # sess.close()
+        end_time = time()
+        times.append(end_time - start_time)
 
 # plot learning curves
 plt.figure(1)
-plt.plot(np.log10(ridge_params), test_accs)
-plt.xlabel('Exponent of Decay Parameter')
-plt.ylabel('Test Accuracy')
+plt.scatter(num_neurons, times)
+plt.xlabel("Number of hidden neurons")
+plt.ylabel('Time Taken To Train 1 Epoch')
 plt.show()
 
