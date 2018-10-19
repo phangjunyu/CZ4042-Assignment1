@@ -44,10 +44,10 @@ y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
 
 # Build the graph for the deep net
 
-weights_h = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neurons], stddev=0.001)) 
+weights_h = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neurons], stddev=1.0/math.sqrt(float(NUM_FEATURES))))
 biases_h = tf.Variable(tf.zeros([num_neurons]))
 
-weights = tf.Variable(tf.truncated_normal([num_neurons, NUM_CLASSES], stddev=1.0/math.sqrt(float(NUM_FEATURES))), name='weights')
+weights = tf.Variable(tf.truncated_normal([num_neurons, NUM_CLASSES], stddev=1.0/math.sqrt(float(num_neurons))), name='weights')
 biases  = tf.Variable(tf.zeros([NUM_CLASSES]), name='biases')
 
 h = tf.nn.relu(tf.matmul(x, weights_h) + biases_h)

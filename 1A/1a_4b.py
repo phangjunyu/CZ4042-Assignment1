@@ -58,11 +58,11 @@ y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
 
 test_accs = []
 # Build the graph for the deep net
-for ridge_param in ridge_params:
-    weights_h = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neuron], stddev=0.001)) 
+for m, ridge_param in enumerate(ridge_params):
+    weights_h = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neuron], stddev=1.0/math.sqrt(float(NUM_FEATURES))))
     biases_h = tf.Variable(tf.zeros([num_neuron]))
 
-    weights = tf.Variable(tf.truncated_normal([num_neuron, NUM_CLASSES], stddev=1.0/math.sqrt(float(NUM_FEATURES))), name='weights')
+    weights = tf.Variable(tf.truncated_normal([num_neuron, NUM_CLASSES], stddev=1.0/math.sqrt(float(num_neuron))), name='weights')
     biases  = tf.Variable(tf.zeros([NUM_CLASSES]), name='biases')
 
     h = tf.nn.relu(tf.matmul(x, weights_h) + biases_h)
@@ -82,18 +82,14 @@ for ridge_param in ridge_params:
     train_acc = []
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        for i in range(epochs):
-            for start in range(0, n-batch_size, batch_size):
-                train_op.run(feed_dict={x: trainX[start:start+batch_size], y_: trainY[start:start+batch_size]})
-            if i %100 == 0:
-                print("iter %d: training accuracy %g"%(i,accuracy.eval(feed_dict={x: trainX, y_: trainY})))
+        saver = tf.train.Saver()
+        saver.restore(sess, "/models/1a_4a_model_" + str(m) + ".ckpt")
         test_accs.append(accuracy.eval(feed_dict={x: testX, y_: testY}))
-        print('test accuracy %g'%(test_accs[-1]))
         sess.close()
 
 # plot learning curves
 plt.figure(1)
-plt.plot(np.log10(ridge_params), test_accs)
+plt.plot(np.append(0, np.log10(ridge_params[1:])), test_accs)
 plt.xlabel('Exponent of Decay Parameter')
 plt.ylabel('Test Accuracy')
 plt.show()

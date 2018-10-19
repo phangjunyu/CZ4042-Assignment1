@@ -40,16 +40,7 @@ test_Y[test_Y == 7] = 6
 testY = np.zeros((test_Y.shape[0], NUM_CLASSES))
 testY[np.arange(test_Y.shape[0]), test_Y-1] = 1 #one hot matrix
 
-
-# experiment with small datasets
-# trainX = trainX[:1000]
-# trainY = trainY[:1000]
-
 n = trainX.shape[0]
-
-# testX = testX[:1000]
-# testY = testY[:1000]
-
 
 
 # Create the model
@@ -59,10 +50,10 @@ y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
 times = []
 for num_neuron in num_neurons:
     # Build the graph for the deep net
-    weights_h = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neuron], stddev=0.001)) 
+    weights_h = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neuron], stddev=1.0/math.sqrt(float(NUM_FEATURES))))
     biases_h = tf.Variable(tf.zeros([num_neuron]))
 
-    weights = tf.Variable(tf.truncated_normal([num_neuron, NUM_CLASSES], stddev=1.0/math.sqrt(float(NUM_FEATURES))), name='weights')
+    weights = tf.Variable(tf.truncated_normal([num_neuron, NUM_CLASSES], stddev=1.0/math.sqrt(float(num_neuron))), name='weights')
     biases  = tf.Variable(tf.zeros([NUM_CLASSES]), name='biases')
 
     h = tf.nn.relu(tf.matmul(x, weights_h) + biases_h)
@@ -87,8 +78,6 @@ for num_neuron in num_neurons:
         for i in range(epochs):
             for start in range(0, n-batch_size, batch_size):
                 train_op.run(feed_dict={x: trainX[start:start+batch_size], y_: trainY[start:start+batch_size]})
-            train_acc = accuracy.eval(feed_dict={x: trainX, y_: trainY})
-            test_acc = accuracy.eval(feed_dict={x: testX, y_: testY})
         # sess.close()
         end_time = time()
         times.append(end_time - start_time)

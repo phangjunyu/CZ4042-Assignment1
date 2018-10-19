@@ -42,13 +42,7 @@ testY[np.arange(test_Y.shape[0]), test_Y-1] = 1 #one hot matrix
 
 
 # experiment with small datasets
-trainX = trainX[:1000]
-trainY = trainY[:1000]
-
 n = trainX.shape[0]
-
-testX = testX[:1000]
-testY = testY[:1000]
 
 # Create the model
 x = tf.placeholder(tf.float32, [None, NUM_FEATURES])
@@ -56,16 +50,15 @@ y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
 
 # Build the graph for the deep net
 
-weights_h1 = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neurons], stddev=0.001)) 
+weights_h1 = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neurons], stddev=1.0/math.sqrt(float(NUM_FEATURES)))) 
 biases_h1 = tf.Variable(tf.zeros([num_neurons]))
-
 h1 = tf.nn.relu(tf.matmul(x, weights_h1) + biases_h1)
 
-weights_h2 = tf.Variable(tf.truncated_normal([num_neurons,num_neurons], stddev=0.001)) 
+weights_h2 = tf.Variable(tf.truncated_normal([num_neurons,num_neurons], stddev=1.0/math.sqrt(float(num_neurons)))) 
 biases_h2 = tf.Variable(tf.zeros([num_neurons]))
 h2 = tf.nn.relu(tf.matmul(h1, weights_h2) + biases_h2)
 
-weights = tf.Variable(tf.truncated_normal([num_neurons, NUM_CLASSES], stddev=1.0/math.sqrt(float(NUM_FEATURES))), name='weights')
+weights = tf.Variable(tf.truncated_normal([num_neurons, NUM_CLASSES], stddev=1.0/math.sqrt(float(num_neurons))), name='weights')
 biases  = tf.Variable(tf.zeros([NUM_CLASSES]), name='biases')
 
 # for 4 layer nn
@@ -88,9 +81,12 @@ accuracy = tf.reduce_mean(correct_prediction)
 
 train_acc = []
 test_acc = []
+shuffle = np.arange(trainX.shape[0])
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     for i in range(epochs):
+        np.random.shuffle(shuffle)
+        trainX, trainY = trainX[shuffle], trainY[shuffle]
         for start in range(0, n-batch_size, batch_size):
             train_op.run(feed_dict={x: trainX[start:start+batch_size], y_: trainY[start:start+batch_size]})
         train_acc.append(accuracy.eval(feed_dict={x: trainX, y_: trainY}))

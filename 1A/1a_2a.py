@@ -7,6 +7,8 @@ import numpy as np
 import pylab as plt
 
 
+
+
 # scale data
 def scale(X, X_min, X_max):
     return (X - X_min)/(X_max-X_min)
@@ -57,10 +59,10 @@ y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
 
 # Build the graph for the deep net
 
-weights_h = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neurons], stddev=0.001)) 
+weights_h = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neurons], stddev=1.0/math.sqrt(float(NUM_FEATURES))))
 biases_h = tf.Variable(tf.zeros([num_neurons]))
 
-weights = tf.Variable(tf.truncated_normal([num_neurons, NUM_CLASSES], stddev=1.0/math.sqrt(float(NUM_FEATURES))), name='weights')
+weights = tf.Variable(tf.truncated_normal([num_neurons, NUM_CLASSES], stddev=1.0/math.sqrt(float(num_neurons))), name='weights')
 biases  = tf.Variable(tf.zeros([NUM_CLASSES]), name='biases')
 
 h = tf.nn.relu(tf.matmul(x, weights_h) + biases_h)
@@ -76,41 +78,51 @@ optimizer = tf.train.GradientDescentOptimizer(learning_rate)
 train_op = optimizer.minimize(loss)
 
 correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)), tf.float32)
+class_err = tf.reduce_sum(tf.cast(tf.not_equal(tf.argmax(logits, 1), tf.argmax(y_, 1)), tf.float32))
 accuracy = tf.reduce_mean(correct_prediction)
 
-all_train_accs = []
+all_train_errs = []
 all_test_accs = []
 for batch_size in batch_sizes:
-    train_acc = []
+    train_err = []
     test_acc = []
-    with tf.Session() as sess:
+    with tf.Session() as sess:        
         sess.run(tf.global_variables_initializer())
         for i in range(epochs):
+            shuffle = np.arange(trainX.shape[0])
+            np.random.shuffle(shuffle)
+            trainX, trainY = trainX[shuffle], trainY[shuffle]
             for start in range(0, n-batch_size, batch_size):
                 train_op.run(feed_dict={x: trainX[start:start+batch_size], y_: trainY[start:start+batch_size]})
-            train_acc.append(accuracy.eval(feed_dict={x: trainX, y_: trainY}))
+            train_err.append(class_err.eval(feed_dict={x: trainX, y_: trainY}))
             test_acc.append(accuracy.eval(feed_dict={x: testX, y_: testY}))
 
             if i % 100 == 0:
-                print('iter %d: training accuracy %g'%(i, train_acc[i]))
-        print('final test accuracy %g'%test_acc[-1])
-        sess.close()
-        
-    all_train_accs.append(train_acc)
+                print('iter %d: classification error %g'%(i, train_err[i]))
+    all_train_errs.append(train_err)
     all_test_accs.append(test_acc)
 
 
-# plot learning curves
+# plot training err
 plt.figure(1)
-for train_acc, test_acc in zip(all_train_accs, all_test_accs):
-    plt.plot(range(epochs), train_acc)
-    plt.plot(range(epochs), test_acc)
+for train_err in all_train_errs:
+    plt.plot(range(epochs), train_err)
 plt.xlabel(str(epochs) + ' iterations')
 legend = []
 for i in batch_sizes:
     legend.append("Training with Batch Size " + str(i))
+plt.legend(legend)
+plt.ylabel('Classification Error')
+plt.show()
+
+# plot test acc
+plt.figure(2)
+for test_acc in all_test_accs:
+    plt.plot(range(epochs), test_acc)
+plt.xlabel(str(epochs) + ' iterations')
+legend = []
+for i in batch_sizes:
     legend.append("Testing with Batch Size " + str(i))
 plt.legend(legend)
 plt.ylabel('Accuracy')
 plt.show()
-

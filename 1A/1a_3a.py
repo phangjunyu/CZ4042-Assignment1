@@ -56,14 +56,15 @@ x = tf.placeholder(tf.float32, [None, NUM_FEATURES])
 y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
 
 
-all_train_accs = []
+all_train_errs = []
 all_test_accs = []
+shuffle = np.arange(trainX.shape[0])
 # Build the graph for the deep net
 for num_neuron in num_neurons:
-    weights_h = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neuron], stddev=0.001)) 
+    weights_h = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neuron], stddev=1.0/math.sqrt(float(NUM_FEATURES))))
     biases_h = tf.Variable(tf.zeros([num_neuron]))
 
-    weights = tf.Variable(tf.truncated_normal([num_neuron, NUM_CLASSES], stddev=1.0/math.sqrt(float(NUM_FEATURES))), name='weights')
+    weights = tf.Variable(tf.truncated_normal([num_neuron, NUM_CLASSES], stddev=1.0/math.sqrt(float(num_neuron))), name='weights')
     biases  = tf.Variable(tf.zeros([NUM_CLASSES]), name='biases')
 
     h = tf.nn.relu(tf.matmul(x, weights_h) + biases_h)
@@ -80,35 +81,48 @@ for num_neuron in num_neurons:
 
     correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)), tf.float32)
     accuracy = tf.reduce_mean(correct_prediction)
+    class_err = tf.reduce_sum(tf.cast(tf.not_equal(tf.argmax(logits, 1), tf.argmax(y_, 1)), tf.float32))
 
-    train_acc = []
+
+    train_err = []
     test_acc = []
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         for i in range(epochs):
+            np.random.shuffle(shuffle)
+            trainX, trainY = trainX[shuffle], trainY[shuffle]
             for start in range(0, n-batch_size, batch_size):
                 train_op.run(feed_dict={x: trainX[start:start+batch_size], y_: trainY[start:start+batch_size]})
-            train_acc.append(accuracy.eval(feed_dict={x: trainX, y_: trainY}))
+            train_err.append(class_err.eval(feed_dict={x: trainX, y_: trainY}))
             test_acc.append(accuracy.eval(feed_dict={x: testX, y_: testY}))
 
             if i % 100 == 0:
-                print('iter %d: training accuracy %g'%(i, train_acc[i]))
+                print('iter %d: classification error %g'%(i, train_err[i]))
         print("final test accuracy: %g" %test_acc[-1])
         # sess.close()
-    all_train_accs.append(train_acc)
+    all_train_errs.append(train_err)
     all_test_accs.append(test_acc)
 
-# plot learning curves
+# plot training err
 plt.figure(1)
-for train_acc, test_acc in zip(all_train_accs, all_test_accs):
-    plt.plot(range(epochs), train_acc)
+for train_err in all_train_errs:
+    plt.plot(range(epochs), train_err)
+plt.xlabel(str(epochs) + ' iterations')
+legend = []
+for i in num_neurons:
+    legend.append("Training with " + str(i) + " neurons")
+plt.legend(legend)
+plt.ylabel('Classification Error')
+plt.show()
+
+# plot test acc
+plt.figure(2)
+for test_acc in all_test_accs:
     plt.plot(range(epochs), test_acc)
 plt.xlabel(str(epochs) + ' iterations')
 legend = []
 for i in num_neurons:
-    legend.append("Training with " + str(i) + " Hidden Neurons")
-    legend.append("Testing with " + str(i) + " Hidden Neurons")
+    legend.append("Testing with " + str(i) + " neurons")
 plt.legend(legend)
 plt.ylabel('Accuracy')
 plt.show()
-

@@ -56,13 +56,15 @@ x = tf.placeholder(tf.float32, [None, NUM_FEATURES])
 y_ = tf.placeholder(tf.float32, [None, NUM_CLASSES])
 
 
-all_train_accs = []
+all_train_errs = []
+shuffle = np.arange(trainX.shape[0])
+
 # Build the graph for the deep net
-for ridge_param in ridge_params:
-    weights_h = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neuron], stddev=0.001)) 
+for m, ridge_param in enumerate(ridge_params):
+    weights_h = tf.Variable(tf.truncated_normal([NUM_FEATURES,num_neuron], stddev=1.0/math.sqrt(float(NUM_FEATURES))))
     biases_h = tf.Variable(tf.zeros([num_neuron]))
 
-    weights = tf.Variable(tf.truncated_normal([num_neuron, NUM_CLASSES], stddev=1.0/math.sqrt(float(NUM_FEATURES))), name='weights')
+    weights = tf.Variable(tf.truncated_normal([num_neuron, NUM_CLASSES], stddev=1.0/math.sqrt(float(num_neuron))), name='weights')
     biases  = tf.Variable(tf.zeros([NUM_CLASSES]), name='biases')
 
     h = tf.nn.relu(tf.matmul(x, weights_h) + biases_h)
@@ -78,29 +80,34 @@ for ridge_param in ridge_params:
 
     correct_prediction = tf.cast(tf.equal(tf.argmax(logits, 1), tf.argmax(y_, 1)), tf.float32)
     accuracy = tf.reduce_mean(correct_prediction)
+    class_err = tf.reduce_sum(tf.cast(tf.not_equal(tf.argmax(logits, 1), tf.argmax(y_, 1)), tf.float32))
 
-    train_acc = []
+    train_err = []
     with tf.Session() as sess:
+
         sess.run(tf.global_variables_initializer())
+        saver = tf.train.Saver()
         for i in range(epochs):
+            np.random.shuffle(shuffle)
+            trainX, trainY = trainX[shuffle], trainY[shuffle]
             for start in range(0, n-batch_size, batch_size):
                 train_op.run(feed_dict={x: trainX[start:start+batch_size], y_: trainY[start:start+batch_size]})
-            train_acc.append(accuracy.eval(feed_dict={x: trainX, y_: trainY}))
+            train_err.append(class_err.eval(feed_dict={x: trainX, y_: trainY}))
 
             if i % 100 == 0:
-                print('iter %d: training accuracy %g'%(i, train_acc[i]))
-        sess.close()
-    all_train_accs.append(train_acc)
+                print('iter %d: classification error %g'%(i, train_err[i]))
+        saver.save(sess, "/models/1a_4a_model_" + str(m) + ".ckpt")
+    all_train_errs.append(train_err)
 
 # plot learning curves
 plt.figure(1)
-for train_acc in all_train_accs:
-    plt.plot(range(epochs), train_acc)
+for train_err in all_train_errs:
+    plt.plot(range(epochs), train_err)
 plt.xlabel(str(epochs) + ' iterations')
 legend = []
 for i in ridge_params:
     legend.append("Training with decay parameter " + str(i))
 plt.legend(legend)
-plt.ylabel('Accuracy')
+plt.ylabel('Classification Error')
 plt.show()
 

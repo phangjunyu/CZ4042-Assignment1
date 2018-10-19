@@ -69,7 +69,11 @@ with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     train_acc = []
     for i in range(epochs):
-        train_op.run(feed_dict={x: trainX, y_: trainY})
+        shuffle = np.arange(trainX.shape[0])
+        np.random.shuffle(shuffle)
+        trainX, trainY = trainX[shuffle], trainY[shuffle]
+        for start in range(0, n-batch_size, batch_size):
+            train_op.run(feed_dict={x: trainX[start:start+batch_size], y_: trainY[start:start+batch_size]})
         train_acc.append(accuracy.eval(feed_dict={x: trainX, y_: trainY}))
 
         if i % 100 == 0:
